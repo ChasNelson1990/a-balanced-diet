@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 \ir ../helpers/helpers.psql
-select plan(25);
+select plan(34);
 
 select tests.create_user('a@example.test') as a \gset
 select tests.create_user('b@example.test') as b \gset
@@ -9,6 +9,12 @@ select tests.create_user('b@example.test') as b \gset
 -- shared CoFID food, inserted as postgres (service-level)
 insert into public.food (id, name, source, source_ref, visibility, kcal_per_100g)
 values ('00000000-0000-0000-0000-0000000000f1', 'Oats (CoFID)', 'cofid', '11-001', 'shared', 372);
+
+-- unit on shared food, plus a private food for B
+insert into public.food_unit (id, food_id, label, grams)
+values ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000f1', 'bowl', 40);
+insert into public.food (id, name, source, visibility, owner_id)
+values ('00000000-0000-0000-0000-0000000000b1', 'B secret', 'user', 'private', :'b');
 
 -- private_food_visible_only_to_owner
 select tests.act_as(:'a'::uuid);
@@ -63,7 +69,7 @@ select throws_ok($$insert into public.food_unit (food_id, label, grams) values (
                  '42501', null, 'food_unit: shared food rejected');
 reset role;
 select tests.act_as(:'b'::uuid);
-select results_eq($$select (select count(*) from public.food_group_share) + (select count(*) from public.food_unit)$$,
+select results_eq($$select (select count(*) from public.food_group_share where food_id = '00000000-0000-0000-0000-0000000000a1') + (select count(*) from public.food_unit where food_id = '00000000-0000-0000-0000-0000000000a1')$$,
                   array[0::bigint], 'B cannot see shares/units of A private food');
 select throws_ok($$insert into public.food_unit (food_id, label, grams) values ('00000000-0000-0000-0000-0000000000a1','x',1)$$,
                  '42501', null, 'B cannot add unit to A food');
@@ -79,6 +85,38 @@ select results_eq($$select count(*)::int from public.dish_breakdown$$, array[0],
 select throws_ok($$insert into public.dish_breakdown (dish_food_id, ingredient_food_id, grams_per_100g_dish) values ('00000000-0000-0000-0000-0000000000a1','00000000-0000-0000-0000-0000000000f1',40)$$,
                  '42501', null, 'dish_breakdown: B cannot reference A private food');
 
+-- B cannot delete A's unit (silently 0 rows); A's unit survives
+select tests.act_as(:'b'::uuid);
+delete from public.food_unit where food_id = '00000000-0000-0000-0000-0000000000a1';
+reset role;
+select results_eq($$select count(*)::int from public.food_unit where food_id = '00000000-0000-0000-0000-0000000000a1'$$,
+                  array[1], 'B cannot delete A unit');
+select tests.act_as(:'a'::uuid);
+select throws_ok($$insert into public.dish_breakdown (owner_id, dish_food_id, ingredient_food_id, grams_per_100g_dish) values ('$$ || :'b' || $$','00000000-0000-0000-0000-0000000000a1','00000000-0000-0000-0000-0000000000f1',10)$$,
+                 '42501', null, 'dish_breakdown: explicit owner_id = B rejected');
+
+-- shared-food unit: A update/delete affect 0 rows, row unchanged
+update public.food_unit set grams = 999 where id = '00000000-0000-0000-0000-0000000000e1';
+delete from public.food_unit where id = '00000000-0000-0000-0000-0000000000e1';
+reset role;
+select results_eq($$select label, grams from public.food_unit where id = '00000000-0000-0000-0000-0000000000e1'$$,
+                  $$values ('bowl', 40::numeric)$$, 'A cannot update/delete unit of shared food');
+select tests.act_as(:'a'::uuid);
+
+-- derived_from must be visible
+select throws_ok($$insert into public.food (name, source, visibility, derived_from) values ('d','user','private','00000000-0000-0000-0000-0000000000b1')$$,
+                 '42501', null, 'derived_from_must_be_visible: insert');
+select lives_ok($$insert into public.food (id, name, source, visibility, derived_from) values ('00000000-0000-0000-0000-0000000000a2','d','user','private','00000000-0000-0000-0000-0000000000f1')$$,
+                'derived_from shared food ok');
+select throws_ok($$update public.food set derived_from = '00000000-0000-0000-0000-0000000000b1' where id = '00000000-0000-0000-0000-0000000000a2'$$,
+                 '42501', null, 'derived_from_must_be_visible: update');
+reset role;
+-- deleting B succeeds (A's food derives only from a shared food)
+select lives_ok($$delete from auth.users where id = '$$ || :'b' || $$'$$, 'deleting B is not blocked');
+select results_eq($$select count(*)::int from public.food where id = '00000000-0000-0000-0000-0000000000b1'$$,
+                  array[0], 'B private food cascaded');
+select tests.act_as(:'a'::uuid);
+
 -- food_hard_delete_blocked (no delete grant/policy), no truncate
 reset role;
 select tests.act_as(:'a'::uuid);
@@ -91,6 +129,12 @@ select throws_ok($$insert into public.food_family (name, reference_state) values
 -- wholegrain_fraction_bounds
 select throws_ok($$insert into public.food (name, source, visibility, wholegrain_fraction) values ('w','user','private',1.2)$$,
                  '23514', null, 'wholegrain_fraction_bounds');
+reset role;
+
+select throws_ok($$insert into public.food (name, source, visibility, wholegrain_fraction) values ('w','user','private',-0.1)$$,
+                 '23514', null, 'wholegrain_fraction lower bound');
+reset role;
+select tests.act_as(:'a'::uuid);
 reset role;
 
 -- anon_cannot_read_food

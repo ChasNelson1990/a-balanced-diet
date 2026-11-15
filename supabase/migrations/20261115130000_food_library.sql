@@ -29,7 +29,7 @@ create table public.food (
   source_ref text,
   visibility public.visibility not null,
   owner_id uuid default auth.uid() references auth.users (id) on delete cascade,
-  derived_from uuid references public.food (id),
+  derived_from uuid references public.food (id) on delete set null,
   family_id uuid references public.food_family (id),
   family_yield numeric check (family_yield > 0),
   state public.food_state not null default 'as_eaten',
@@ -79,6 +79,8 @@ create table public.dish_breakdown (
   deleted_at timestamptz,
   unique (owner_id, dish_food_id, ingredient_food_id)
 );
+create index dish_breakdown_dish_food_id_idx on public.dish_breakdown (dish_food_id);
+create index dish_breakdown_ingredient_food_id_idx on public.dish_breakdown (ingredient_food_id);
 create trigger dish_breakdown_set_updated_at before update on public.dish_breakdown
   for each row execute function public.set_updated_at();
 
@@ -97,16 +99,33 @@ grant select, insert, update on public.food, public.food_group_share,
 -- food_group_share/food_unit: owners also remove their own rows (child rows, no soft delete)
 grant delete on public.food_group_share, public.food_unit to authenticated;
 
+-- Same rule as food_select, as a definer function so food's own WITH CHECK can
+-- test visibility without RLS self-recursion.
+create function public.food_is_visible(fid uuid) returns boolean
+language sql stable security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.food f
+    where f.id = fid
+      and (f.visibility in ('shared', 'public') or f.owner_id = (select auth.uid()))
+  )
+$$;
+revoke all on function public.food_is_visible(uuid) from public, anon;
+grant execute on function public.food_is_visible(uuid) to authenticated;
+
 create policy food_family_select on public.food_family
   for select to authenticated using (true);
 
 create policy food_select on public.food for select to authenticated
   using (visibility in ('shared', 'public') or owner_id = (select auth.uid()));
 create policy food_insert on public.food for insert to authenticated
-  with check (visibility = 'private' and owner_id = (select auth.uid()));
+  with check (visibility = 'private' and owner_id = (select auth.uid())
+    and (derived_from is null or public.food_is_visible(derived_from)));
 create policy food_update on public.food for update to authenticated
   using (owner_id = (select auth.uid()))
-  with check (visibility = 'private' and owner_id = (select auth.uid()));
+  with check (visibility = 'private' and owner_id = (select auth.uid())
+    and (derived_from is null or public.food_is_visible(derived_from)));
 
 -- Child tables: read if parent visible (RLS on food applies in the subquery),
 -- write if the parent is owned by the caller.
