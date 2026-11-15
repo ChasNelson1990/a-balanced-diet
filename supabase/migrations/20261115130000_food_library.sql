@@ -15,6 +15,8 @@ begin
   new.updated_at := clock_timestamp();
   return new;
 end $$;
+-- Trigger-only: nobody needs to call it, and anon must not be able to (catalog guard).
+revoke all on function public.set_updated_at() from public, anon;
 
 create table public.food_family (
   id uuid primary key default gen_random_uuid(),
