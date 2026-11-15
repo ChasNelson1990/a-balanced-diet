@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 \ir ../helpers/helpers.psql
-select plan(46);
+select plan(50);
 
 select tests.create_user('a@example.test') as a \gset
 select tests.create_user('b@example.test') as b \gset
@@ -130,6 +130,20 @@ select throws_ok($$insert into public.weight_entry (owner_id, day, kg) values ('
 set local role anon;
 select throws_ok($$select * from public.log_entry$$, '42501', null, 'anon_cannot_read_log_entry');
 reset role;
+
+-- movement_history_survives_item_delete (as postgres: authenticated has no DELETE)
+insert into public.cupboard_item (id, owner_id, food_id, quantity_g)
+values ('00000000-0000-0000-0000-0000000000d5', :'a', '00000000-0000-0000-0000-0000000000a1', 10);
+insert into public.cupboard_movement (id, owner_id, cupboard_item_id, food_id, reason, quantity_g)
+values ('00000000-0000-0000-0000-0000000000d6', :'a', '00000000-0000-0000-0000-0000000000d5',
+        '00000000-0000-0000-0000-0000000000a1', 'went_off', 10);
+select lives_ok($$delete from public.cupboard_item where id = '00000000-0000-0000-0000-0000000000d5'$$,
+  'hard-deleting a cupboard item succeeds');
+select is((select count(*)::int from public.cupboard_movement where id = '00000000-0000-0000-0000-0000000000d6'), 1,
+  'movement history survives item delete');
+select is((select cupboard_item_id from public.cupboard_movement where id = '00000000-0000-0000-0000-0000000000d6'), null,
+  'movement cupboard_item_id set to null');
+select ok('other' = any (enum_range(null::public.movement_reason)::text[]), 'movement_reason has other');
 
 -- user_account_delete_cascades
 insert into public.food (id, name, source, visibility, owner_id)
