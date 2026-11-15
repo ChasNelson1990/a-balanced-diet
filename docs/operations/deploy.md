@@ -7,12 +7,14 @@ secret in CI). `supabase link` is not needed: every command below targets the da
 
 ## 0. Build the connection URL
 
-Run this in each shell session. It loads direnv (which exports `SUPABASE_DB_PASSWORD`),
+Run this in each shell session, from the repo root (every command below uses repo-relative
+paths). It loads direnv (which exports `SUPABASE_DB_PASSWORD`),
 sources the config, percent-encodes the password and builds `URL`. The password is never
 typed on a command line. Do not echo `URL`.
 
 ```bash
 eval "$(direnv export bash 2>/dev/null)"
+: "${SUPABASE_DB_PASSWORD:?SUPABASE_DB_PASSWORD is not set}"
 set -a; source config/supabase.env; set +a
 enc="$(python3 -c 'import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1],safe=""))' "$SUPABASE_DB_PASSWORD")"
 URL="postgresql://${SUPABASE_DB_USER}:${enc}@${SUPABASE_DB_HOST}:${SUPABASE_DB_PORT}/${SUPABASE_DB_NAME}"
@@ -93,7 +95,28 @@ end $$;
 rollback;
 ```
 
-Save it as a file and run `psql "$URL" -v ON_ERROR_STOP=1 -f <file>`. Then the public API
+Then a rolled-back Vault check. `public.user_secret.owner_id` references `auth.users`, so the
+smoke test needs a real uid. It borrows the owner's uid, selected as `postgres` (no email is
+printed), and everything is rolled back:
+
+```sql
+begin;
+select id as uid from auth.users order by created_at limit 1 \gset
+set local role authenticated;
+select set_config('request.jwt.claims',
+  json_build_object('sub', :'uid'::uuid, 'role', 'authenticated')::text, true);
+select public.set_my_secret('anthropic_api_key', 'sk-ant-smoke-0123456789abcdef');
+do $$ begin
+  assert public.has_my_secret('anthropic_api_key'), 'has_my_secret should be true after set';
+end $$;
+select public.clear_my_secret('anthropic_api_key');
+do $$ begin
+  assert not public.has_my_secret('anthropic_api_key'), 'has_my_secret should be false after clear';
+end $$;
+rollback;
+```
+
+Save each as a file and run `psql "$URL" -v ON_ERROR_STOP=1 -f <file>`. Then the public API
 check, which must not return 16 rows (it returns HTTP 401 with code 42501):
 
 ```bash

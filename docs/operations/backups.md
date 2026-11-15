@@ -87,9 +87,10 @@ Use this when the hosted project is lost. Run commands from the repo root.
 1. Create a new Supabase project (same region if you can) and note its ref, database
    password and pooler host.
 2. Point the repo at the **new** project before connecting. Update `config/supabase.env`
-   (project ref, URL, pooler host, user, publishable key) and set `SUPABASE_DB_PASSWORD` in your direnv
-   environment to the new project's password. Then build `URL` from those values. Building
-   it from the old config would target the lost project. Do not echo `URL`:
+   (project ref, URL, pooler host, user, publishable key) and set `SUPABASE_DB_PASSWORD` in
+   your direnv environment to the new project's password. Then build `URL` from those
+   values, as in `deploy.md` section 0. Building it from the old config would target the
+   lost project. Do not echo `URL`:
 
    ```bash
    eval "$(direnv export bash 2>/dev/null)"
@@ -140,7 +141,8 @@ Use this when the hosted project is lost. Run commands from the repo root.
    ```
 
 5. Do **not** re-apply the seeds: the reference data is already in `data.sql`.
-6. Re-apply the dashboard auth settings (sign-ups off, email confirmation off).
+6. Re-apply the dashboard auth settings (sign-ups off, email confirmation off) and re-run the
+   signup probe from `deploy.md` section 3. It must return `signup_disabled`.
 7. Ask every user to re-enter their Anthropic API key (see below).
 8. Commit the `config/supabase.env` change (only that file), update the `SUPABASE_DB_PASSWORD` GitHub secret,
    then run the backup workflow once to prove it.
