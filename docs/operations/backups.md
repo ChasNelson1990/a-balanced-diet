@@ -70,6 +70,14 @@ Supabase Vault secrets are encrypted with a project root key that is **not** in 
 Before deleting or replacing a project, retrieve its root encryption key (see Supabase's
 docs); otherwise Vault secrets (used from Task 6) cannot be decrypted after a restore.
 
+## Proven end to end
+
+Run 43708807036 (attempt 2) produced artifact `backup-43708807036`; restoring it with
+`restore-check.sh` printed `restore check OK: heartbeat 43708807036-2 found`. The first
+attempt failed only because the heartbeat migration had not yet been applied to the hosted
+project: apply migrations (`supabase db push --remote=<url> --yes`) before the first backup.
+No extra `sed` fixes beyond the two documented lines were needed for the hosted dump.
+
 ## Pausing
 
 Free projects pause after about a week of inactivity. The nightly heartbeat should prevent
