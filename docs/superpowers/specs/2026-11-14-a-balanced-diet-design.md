@@ -128,7 +128,7 @@ Technology choices are the builder's unless marked as decided in §3. The sugges
 
 **Per-user secrets.** Each user's Anthropic API key is stored server-side, encrypted (e.g. Supabase Vault, keyed by user), and only read by the AI Edge Function on that user's own requests. It is never returned to the client after entry.
 
-Nutrition, colour, quota contribution and CO2e for a log entry are **computed** from the food, or its breakdown, at read time and stored as a snapshot on the entry, so history stays stable if library data later changes.
+Nutrition, colour, quota contribution and CO2e for a log entry are **computed** from the food, or its breakdown, **when the entry is saved or explicitly edited**, and stored as a snapshot on the entry. Reads use the snapshot, so history stays stable if library data later changes. The snapshot holds **both** dairy-equivalent contributions (energy basis and milk-used basis), so changing the dairy setting (§3) recalculates the score from the snapshot without rewriting history.
 
 ## 7. Food data
 
