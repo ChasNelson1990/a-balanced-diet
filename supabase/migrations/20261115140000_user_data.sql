@@ -8,7 +8,7 @@ create type public.dairy_basis as enum ('energy', 'milk_used');
 create type public.base_pattern as enum ('flexitarian', 'pescatarian', 'vegetarian', 'vegan');
 create type public.meal_slot as enum ('breakfast', 'lunch', 'dinner', 'snacks');
 create type public.movement_reason as enum
-  ('bought', 'eaten_logged', 'went_off', 'gave_away', 'eaten_unlogged', 'stock_correction');
+  ('bought', 'eaten_logged', 'went_off', 'gave_away', 'eaten_unlogged', 'stock_correction', 'other');
 
 create table public.profile_targets (
   owner_id uuid primary key default auth.uid() references auth.users (id) on delete cascade,
@@ -83,7 +83,9 @@ create table public.cupboard_item (
 create table public.cupboard_movement (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
-  cupboard_item_id uuid references public.cupboard_item (id) on delete cascade,
+  -- set null: hard-deleting a cupboard item must not erase waste history. Account
+  -- deletion still cascades through owner_id.
+  cupboard_item_id uuid references public.cupboard_item (id) on delete set null,
   food_id uuid not null references public.food (id),
   reason public.movement_reason not null,
   quantity_g numeric not null check (quantity_g > 0),
