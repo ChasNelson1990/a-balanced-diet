@@ -35,6 +35,9 @@ create trigger user_secret_after_delete
   after delete on public.user_secret
   for each row execute function private.user_secret_cleanup();
 
+-- vault.secrets is not in the CLI dump, so after a restore user_secret rows can point at
+-- Vault rows that no longer exist. has_my_secret requires the Vault row, and set_my_secret
+-- recreates a missing Vault secret and repoints user_secret at it.
 create function public.set_my_secret(p_kind text, p_value text) returns void
 language plpgsql security definer
 set search_path = ''
@@ -61,14 +64,19 @@ begin
   select vault_secret_id into sid
   from public.user_secret where owner_id = uid and kind = p_kind;
 
-  if sid is null then
-    sid := vault.create_secret(p_value, sname, 'per-user secret');
-    insert into public.user_secret (owner_id, kind, vault_secret_id)
-    values (uid, p_kind, sid);
-  else
+  if sid is not null and exists (select 1 from vault.secrets where id = sid) then
     perform vault.update_secret(sid, p_value);
     update public.user_secret set updated_at = now()
     where owner_id = uid and kind = p_kind;
+  else
+    -- no row yet, or the Vault row is gone (restore from backup): create a fresh secret.
+    -- A leftover Vault row with this name but another id would clash on the unique name.
+    delete from vault.secrets where name = sname;
+    sid := vault.create_secret(p_value, sname, 'per-user secret');
+    insert into public.user_secret (owner_id, kind, vault_secret_id)
+    values (uid, p_kind, sid)
+    on conflict (owner_id, kind)
+    do update set vault_secret_id = excluded.vault_secret_id, updated_at = now();
   end if;
 end $$;
 
@@ -77,8 +85,10 @@ language sql stable security definer
 set search_path = ''
 as $$
   select exists (
-    select 1 from public.user_secret
-    where owner_id = (select auth.uid()) and kind = p_kind
+    select 1
+    from public.user_secret us
+    join vault.secrets vs on vs.id = us.vault_secret_id
+    where us.owner_id = (select auth.uid()) and us.kind = p_kind
   )
 $$;
 
