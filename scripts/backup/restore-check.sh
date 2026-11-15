@@ -96,4 +96,10 @@ if [ "$count" != "1" ]; then
   echo "restore check FAILED: heartbeat $expected found $count times (expected 1)" >&2
   exit 1
 fi
-echo "restore check OK: heartbeat $expected found"
+# 5. Reference data must have survived the restore.
+groups="$(psql "$db_url" -tAc "select count(*) from public.eat_group")"
+if [ "$groups" != "16" ]; then
+  echo "restore check FAILED: eat_group has $groups rows (expected 16)" >&2
+  exit 1
+fi
+echo "restore check OK: heartbeat $expected found, eat_group = 16"
