@@ -11,13 +11,22 @@
 2. Dumps roles, schema and data with `supabase db dump` (`roles.sql`, `schema.sql`,
    `data.sql` with `--use-copy`).
 3. Fails if any dump is empty or if `data.sql` does not contain the run id.
-4. Encrypts each file with `age` to the public key in the `AGE_RECIPIENT` secret and shreds
+4. Encrypts each file with `age` to the public key in `config/supabase.env` and shreds
    the plaintext.
 
-The connection uses the **session pooler** URI (`SUPABASE_DB_URL` secret):
-`postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres`.
-The user must be `postgres.<ref>`, the port `5432` (session mode, not 6543), and any special
-characters in the password must be percent-encoded.
+### Configuration
+
+Non-secret settings live in the committed `config/supabase.env` (project ref, URL, pooler
+host/port/user/database, and the `AGE_RECIPIENT` public key). The only GitHub secret is
+`SUPABASE_DB_PASSWORD`. `dump.sh` sources the config file, percent-encodes the password and
+builds the session-pooler URI itself:
+`postgresql://postgres.<ref>:<password>@aws-N-<region>.pooler.supabase.com:5432/postgres`.
+The project region is **eu-west-1** (Ireland), pooler host `aws-1-eu-west-1.pooler.supabase.com`.
+The user must be `postgres.<ref>`, the port `5432` (session mode, not 6543). The workflow
+masks the raw and encoded password in the logs.
+
+For local proofs, set `SUPABASE_DB_URL` (and optionally `AGE_RECIPIENT`) to override the
+built URL and the configured key.
 
 ### CLI flag
 
@@ -71,4 +80,4 @@ in the Supabase dashboard, then re-run the workflow.
 
 - User must be `postgres.<ref>`, not `postgres`.
 - Port `5432` (session mode), not `6543`.
-- Percent-encode special characters in the password.
+- The password is percent-encoded by `dump.sh`; paste it raw into the secret.
