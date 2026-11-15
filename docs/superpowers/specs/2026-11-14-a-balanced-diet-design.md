@@ -141,7 +141,7 @@ Nutrition, colour, quota contribution and CO2e for a log entry are **computed** 
 
 ### 7.2 Pipeline jobs (the data-engineering core)
 - **CoFID → EAT groups.** Map each CoFID food to `food_group_share` rows. Single-ingredient foods map directly from the CoFID food-group code to an EAT group. Composite dishes get a breakdown where one can be derived; otherwise they are marked "needs breakdown" and only get group shares once the user (or AI) supplies one. The mapping is a reviewed CSV in the repo, not hidden logic.
-- **Dry-equivalent conversion** for grains and legumes. Use CoFID's paired raw/dry and boiled entries (water content ratio) to derive yield factors, for example cooked lentils → dry lentils. Bread, tofu, peas and edamame need explicit factors; the user's spreadsheet notes these are the least certain numbers.
+- **Dry-equivalent conversion** for grains and legumes. Use CoFID's paired raw/dry and boiled entries to derive yield factors from the **ratio of non-water fractions**: dry g = cooked g × (1 − water_cooked) ÷ (1 − water_dry), for example cooked lentils → dry lentils (10% water dry, 70% cooked: 100 g cooked = 33.3 g dry). This assumes cooking retains all dry matter (nothing leaches into discarded cooking water); the assumption is stated next to each derived factor. Bread, tofu, peas and edamame need explicit factors; the user's spreadsheet notes these are the least certain numbers.
 - **Colour.** Compute colour per food from as-eaten kcal/g (§8).
 - **CO2e.** Attach CO2e per kg to each food (§10).
 - **Unknown, not zero.** Missing nutrient values stay null, and the UI shows "unknown" or a lower-bound marker in totals.
