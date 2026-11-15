@@ -10,8 +10,6 @@ Prerequisite: Docker must be running.
 - `npm run db:reset` rebuilds the local database from the migrations.
 - `npm run db:test` runs the pgTAP tests in `supabase/tests/database`.
 
-Local ports are shifted by +100 (database on 54422) to avoid clashing with other local Supabase stacks.
-
 ## Data sources and licences
 
 ### CoFID (OGL v3.0)
