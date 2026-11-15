@@ -13,10 +13,17 @@ if ! [[ "$expected" =~ ^[A-Za-z0-9._-]+$ ]]; then
   exit 1
 fi
 
+# Make the arguments absolute before changing directory.
+backup_dir="$(cd "$backup_dir" && pwd)"
+identity="$(cd "$(dirname "$identity")" && pwd)/$(basename "$identity")"
+
+# Resolve the repo's pinned CLI: always run npx from the repo root, so it cannot fetch another.
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$repo_root"
 if command -v supabase >/dev/null 2>&1; then
   sb=(supabase)
 else
-  sb=(npx supabase)
+  sb=(npx --prefix "$repo_root" supabase)
 fi
 
 plain="$(mktemp -d)"
