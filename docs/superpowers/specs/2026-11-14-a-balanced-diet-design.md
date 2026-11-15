@@ -167,8 +167,10 @@ Noom publishes the method (calorie density = kcal ÷ grams, with soups, sauces a
 | Kind | Green | Yellow | Orange |
 |---|---|---|---|
 | Solid foods (as eaten) | < 1.0 kcal/g | 1.0–2.4 | > 2.4 |
-| Soups, sauces, spreads | < 0.5 kcal/ml | 0.5–1.0 | > 1.0 |
-| Drinks | < 0.2 | 0.2–0.5 | > 0.5 |
+| Soups, sauces, spreads | < 0.5 kcal/g | 0.5–1.0 | > 1.0 |
+| Drinks | < 0.2 kcal/g | 0.2–0.5 | > 0.5 |
+
+All thresholds are in **kcal per gram** (user decision). Soups, sauces and drinks are logged and stored in grams like everything else (a "glass" or "bowl" is just a `food_unit` with a gram weight), so no volume or density conversion is needed.
 
 Adjustments:
 - **Protein density:** move up one colour (orange → yellow, or yellow → green) when protein is ≥ 20% of energy and kcal/g ≤ 2.4. The user has said skyr is green.
