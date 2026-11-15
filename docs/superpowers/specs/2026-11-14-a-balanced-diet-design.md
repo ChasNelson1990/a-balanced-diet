@@ -201,7 +201,7 @@ Decision variables are `x_g`, grams per day for each of the 15 food groups. **So
 Each colour's daily budget is its share of the kcal target: at 1,750 kcal and 50/30/20, that's green 875, yellow 525 and orange 350 kcal. The home screen shows kcal left per colour.
 
 ### 9.3 Weekly quotas
-The weekly quota per group is the accepted plan's g/day × 7. The shopping list shows `item grams of group ÷ weekly quota`. Items in several groups show their main group, and the detail view shows every group.
+The weekly quota per group is the accepted plan's g/day × 7. The shopping list shows `item grams of group ÷ weekly quota`. Items in several groups show their main group, and the detail view shows every group. Where a group's weekly quota is 0 (excluded, or pinned to 0), no percentage is shown: the row and the detail view show "not in your plan · 150 g" instead.
 
 ### 9.4 Rolling 7-day EAT score (0–100)
 For each group, let `a` be the average daily intake over the last 7 complete days plus today so far, pro-rated. *Builder: choose one consistent definition and show it in the UI.* Then:
