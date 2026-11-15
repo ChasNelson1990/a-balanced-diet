@@ -182,6 +182,14 @@ attempt failed only because the heartbeat migration had not yet been applied to 
 project: apply migrations (`supabase db push --remote=<url> --yes`) before the first backup.
 No extra `sed` fixes beyond the two documented lines were needed for the hosted dump.
 
+### Re-proved with the full schema
+
+After the full schema (reference data, food library, user tables, Vault and the `private`
+schema) was deployed, run 43719950815 (attempt 1) produced `backup-43719950815`. Restoring it
+printed `restore check OK: heartbeat 43719950815-1 found, eat_group = 16`. No extra `sed`
+fixes were needed for Vault or the `private` schema. `restore-check.sh` now also asserts that
+`public.eat_group` has 16 rows after the restore.
+
 ## Pausing
 
 Free projects pause after about a week of inactivity. The nightly heartbeat should prevent
