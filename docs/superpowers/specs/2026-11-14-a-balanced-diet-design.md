@@ -185,11 +185,11 @@ The plan's colour split is computed per group from the colours of that group's r
 ## 9. Targets, optimiser and score
 
 ### 9.1 Optimiser (runs on the phone, the user accepts the result)
-Decision variables are `x_g`, grams per day for each of the 16 groups (sodium in mg).
+Decision variables are `x_g`, grams per day for each of the 15 food groups. **Sodium is not a decision variable**: it is derived from the plan as Σ x_g × (sodium mg per g of group g's representative mix), and that total is constrained to ≤ 2,000 mg/day. The score still has a sodium row, computed from logged intake (§9.4).
 
 - **Bounds:** EAT range `[min_g, max_g]`. Excluded groups are fixed at 0. Pinned groups are fixed at the pinned value. The ranges are those in the report, which assumes ~2,400 kcal; they are *not* scaled down. The user's earlier spreadsheet tried scaling and found it infeasible at 1,750 kcal with a 20% orange share, so it used the defaults flexed within ranges. **Exception: whole grains**, whose range is 20–50% of energy (§7.3), is expressed as a linear constraint on grain kcal (0.20 × kcal target ≤ grain kcal ≤ 0.50 × kcal target), and its score uses the same energy-share band. Appendix 1's PHD versions at other energy intakes may replace the "don't scale" rule once we have it.
-- **Per-group densities:** kcal, protein and fibre per gram of group, and the colour mix of the group's kcal, all from an editable "representative mix" per group. This mirrors the "per 100 g" inputs in the user's sheet, seeded from it, and can later be refreshed from what the user actually eats.
-- **Constraints:** kcal within ±25 of the target; protein ≥ floor; fibre ≥ floor; each colour's kcal share within ±tolerance (default 3 points) of the split. These are linear because the kcal total is fixed within the band.
+- **Per-group densities:** kcal, protein, fibre and sodium per gram of group, and the colour mix of the group's kcal, all from an editable "representative mix" per group. This mirrors the "per 100 g" inputs in the user's sheet, seeded from it, and can later be refreshed from what the user actually eats.
+- **Constraints:** kcal within ±25 of the target; protein ≥ floor; fibre ≥ floor; derived sodium ≤ 2,000 mg; each colour's kcal share within ±tolerance (default 3 points) of the split. These are linear because the kcal total is fixed within the band.
 - **Objective:** minimise Σ weighted |x_g − default_g| / (max_g − min_g), plus a penalty for fibre above its soft ceiling, plus a pull towards max_g for favoured groups. Absolute values are handled with standard LP splitting.
 - **If infeasible**, report which constraints conflict by relaxing tolerances in order (colour, then fibre ceiling) and say what was relaxed. Never fail silently.
 - **Output:** a proposed plan beside the current one (per-group grams, kcal, protein, fibre, colour split), which the user accepts or rejects. Accepting it versions the `plan`.
