@@ -212,6 +212,7 @@ For each group, let `a` be the average daily intake over the last 7 complete day
 - **Group types (my call, editable):**
   - *Shortfall-penalised*: vegetables, fruit, legumes, whole grains, nuts, unsaturated oil.
   - *Excess-penalised*: red meat, poultry, eggs, fish, dairy, starchy roots, sugar, palm/coconut oil, lard/tallow/butter, sodium.
+  - *Which groups can be excluded:* only groups whose EAT minimum is 0 (red meat, poultry, fish, eggs, dairy, nuts, legumes, starchy roots, sugar, palm/coconut oil, lard/tallow/butter). Vegetables, fruit, whole grains and unsaturated oils have positive minimums, so setup doesn't offer "excluded" for them; they can still be allowed or favoured.
   - *Excluded groups* (user decision): **stay in the score**, since other users may well eat poultry. An excluded group keeps its EAT range for scoring (poultry 0–60 g) with a personal target of 0, so the in-range formula works without dividing by zero. Zero intake scores 100; any intake lowers it through the closeness term and is also flagged in the score card ("poultry eaten: 40 g this week").
 - **Overall** = the unweighted mean across all 16 groups (weights configurable later).
 - **"Why" hints:** the two lowest-scoring groups with a direction, for example "↓ legumes low", "↑ sugar near cap".
@@ -249,7 +250,7 @@ Each factor records its source and system boundary; values are typically farm-to
 - **Shop, option A:** add from the library; each row has a checkbox, colour dot, name and amount, and "% of a week's <group>". The footer shows the basket's colour split (kcal) against target. Ticking an item moves it to the cupboard (amount editable on tick).
 - **Cupboard:** a list grouped by EAT group with amounts. Remove (all or part) → reason picker (went off / binned, gave away, eaten but not logged, stock correction). Manual add as well.
 - **Plan:** targets (kcal, protein, fibre floor and soft ceiling, colour split), group status (excluded, allowed, favoured, pinned), representative mixes, "Re-optimise" → side-by-side proposal → accept. Also weight entry and the weight-vs-kcal trend.
-- **First-run setup (all users, owner included):** kcal target, protein and fibre floors, colour split, food-group status (excluded, allowed, favoured), then the first optimiser run, starting from neutral EAT-Lancet defaults.
+- **First-run setup (all users, owner included):** kcal target, protein and fibre floors, colour split, food-group status (excluded, allowed, favoured; "excluded" only for groups with an EAT minimum of 0, §9.4), then the first optimiser run, starting from neutral EAT-Lancet defaults.
 - **Settings:** account, dairy basis (energy / raw milk used, with the info tooltip), own Anthropic API key (optional; enables AI breakdowns), sync status and last sync, data sources and attributions (CoFID OGL, Open Food Facts ODbL, CO2e sources), export (JSON/CSV).
 
 Visual design: clean, works in light and dark mode (follows the system), designed for phone width first. The mockups chosen in brainstorming live in `.superpowers/brainstorm/` for reference.
