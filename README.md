@@ -12,6 +12,10 @@ Prerequisite: Docker must be running.
 
 Local ports are shifted by +100 (database on 54422) to avoid clashing with other local Supabase stacks.
 
+## Deploying
+
+See [docs/operations/deploy.md](docs/operations/deploy.md) for the hosted deployment steps and [docs/operations/backups.md](docs/operations/backups.md) for the nightly encrypted backup and restore check.
+
 ## Data sources and licences
 
 ### CoFID (OGL v3.0)
