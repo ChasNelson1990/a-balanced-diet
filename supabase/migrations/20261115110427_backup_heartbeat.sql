@@ -8,3 +8,6 @@ create table public.backup_heartbeat (
 );
 
 alter table public.backup_heartbeat enable row level security;
+
+-- Belt and braces: the API roles get no table privileges at all.
+revoke all on public.backup_heartbeat from anon, authenticated;
