@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 \ir ../helpers/helpers.psql
-select plan(25);
+select plan(26);
 
 select tests.create_user('a@example.test') as a \gset
 select tests.create_user('b@example.test') as b \gset
@@ -96,6 +96,10 @@ select is((select array_agg(g order by g) from (
     select grantee::regrole::text g from aclexplode((select proacl from pg_proc where oid = 'public.set_my_secret(text,text)'::regprocedure))
     where privilege_type = 'EXECUTE') s),
   array['authenticated','postgres'], 'set_my_secret EXECUTE only authenticated (+owner)');
+select is((select array_agg(g order by g) from (
+    select grantee::regrole::text g from aclexplode((select proacl from pg_proc where oid = 'public.has_my_secret(text)'::regprocedure))
+    where privilege_type = 'EXECUTE') s),
+  array['authenticated','postgres'], 'has_my_secret EXECUTE only authenticated (+owner)');
 select is((select array_agg(g order by g) from (
     select grantee::regrole::text g from aclexplode((select proacl from pg_proc where oid = 'private.get_user_secret(uuid,text)'::regprocedure))
     where privilege_type = 'EXECUTE') s),
