@@ -219,7 +219,7 @@ For each group, let `a` be the average daily intake over the last 7 complete day
 
 ### 9.5 Whole-grain share
 Refined grains count towards the grains quota (user decision), with a separate highlight:
-- **Whole-grain share** = Σ(grain grams × wholegrain_fraction) ÷ Σ grain grams over the rolling 7 days.
+- **Whole-grain share** = Σ(grain grams × wholegrain_fraction) ÷ Σ grain grams over the rolling 7 days. When no grains were logged in the window (including every new user's first days), there is no share: the UI shows "no grains logged" and the below-goal hint is suppressed.
 - The user sets a **whole-grain goal** on the Plan screen (default 75%) and can raise it over time.
 - It's shown in the grains row of the score breakdown, on grain items in the log and shopping list (a "refined" or "whole" tag), and as a "why" hint on the home score card when below the goal ("↑ whole-grain share 52%, goal 75%").
 - It doesn't change the score number (keeping the score purely EAT-Lancet).
