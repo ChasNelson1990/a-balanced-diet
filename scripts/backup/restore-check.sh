@@ -102,4 +102,20 @@ if [ "$groups" != "16" ]; then
   echo "restore check FAILED: eat_group has $groups rows (expected 16)" >&2
   exit 1
 fi
-echo "restore check OK: heartbeat $expected found, eat_group = 16"
+# 6. The schemas and objects the app relies on must exist, and users must have survived.
+exists="$(psql "$db_url" -tAc "select
+  (select count(*) from pg_namespace where nspname = 'private')
+  + (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'private' and p.proname = 'get_user_secret')
+  + (select count(*) from pg_class c join pg_namespace n on n.oid = c.relnamespace
+       where n.nspname = 'public' and c.relname = 'user_secret' and c.relkind = 'r')")"
+if [ "$exists" != "3" ]; then
+  echo "restore check FAILED: private schema, private.get_user_secret or public.user_secret missing" >&2
+  exit 1
+fi
+users="$(psql "$db_url" -tAc "select count(*) from auth.users")"
+if ! [ "$users" -gt 0 ] 2>/dev/null; then
+  echo "restore check FAILED: auth.users has $users rows (expected > 0)" >&2
+  exit 1
+fi
+echo "restore check OK: heartbeat $expected found, eat_group = 16, private schema + user_secret present, auth.users = $users"
