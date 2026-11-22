@@ -113,7 +113,7 @@ Assertions: `has_table('public','backup_heartbeat')`; `col_is_unique('public','b
 
 Run: `npm run db:test`, expected FAIL (table missing).
 
-- [ ] **Step 3: Migration `npx supabase migration new backup_heartbeat`** with the table from Interfaces and `alter table … enable row level security;`. Run `npm run db:reset && npm run db:test`, expected PASS.
+- [ ] **Step 3: Migration `npx supabase migration new backup_heartbeat`** with the table from Interfaces and `alter table … enable row level security;`. Run `npm run db:reset && npm run db:test`, expected PASS. Then, with the user's approval (it changes the hosted database), apply it to the hosted project with `npx supabase db push --yes --remote="$SUPABASE_DB_URL"`: the first hosted backup in Step 7 writes to this table, long before Task 7 deploys the rest.
 
 - [ ] **Step 4: `scripts/backup/dump.sh`**
 
