@@ -11,6 +11,10 @@ Prerequisites: Node.js 24 with npm, and Docker running.
 - `npm run db:reset` rebuilds the local database from the migrations.
 - `npm run db:test` runs the pgTAP tests in `supabase/tests/database`.
 
+## Licence
+
+The code is released under the [MIT licence](LICENSE). Third-party data keeps its own licence, listed below.
+
 ## Data sources and licences
 
 ### CoFID (OGL v3.0)
