@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 \ir ../helpers/helpers.psql
-select plan(34);
+select plan(36);
 
 select tests.create_user('a@example.test') as a \gset
 select tests.create_user('b@example.test') as b \gset
@@ -85,22 +85,25 @@ select results_eq($$select count(*)::int from public.dish_breakdown$$, array[0],
 select throws_ok($$insert into public.dish_breakdown (dish_food_id, ingredient_food_id, grams_per_100g_dish) values ('00000000-0000-0000-0000-0000000000a1','00000000-0000-0000-0000-0000000000f1',40)$$,
                  '42501', null, 'dish_breakdown: B cannot reference A private food');
 
--- B cannot delete A's unit (silently 0 rows); A's unit survives
+-- B can neither hard-delete nor soft-delete A's unit
 select tests.act_as(:'b'::uuid);
-delete from public.food_unit where food_id = '00000000-0000-0000-0000-0000000000a1';
+select throws_ok($$delete from public.food_unit where food_id = '00000000-0000-0000-0000-0000000000a1'$$,
+                 '42501', null, 'B cannot hard-delete A unit');
+update public.food_unit set deleted_at = now() where food_id = '00000000-0000-0000-0000-0000000000a1';
 reset role;
-select results_eq($$select count(*)::int from public.food_unit where food_id = '00000000-0000-0000-0000-0000000000a1'$$,
-                  array[1], 'B cannot delete A unit');
+select results_eq($$select count(*)::int from public.food_unit where food_id = '00000000-0000-0000-0000-0000000000a1' and deleted_at is null$$,
+                  array[1], 'B cannot soft-delete A unit');
 select tests.act_as(:'a'::uuid);
 select throws_ok($$insert into public.dish_breakdown (owner_id, dish_food_id, ingredient_food_id, grams_per_100g_dish) values ('$$ || :'b' || $$','00000000-0000-0000-0000-0000000000a1','00000000-0000-0000-0000-0000000000f1',10)$$,
                  '42501', null, 'dish_breakdown: explicit owner_id = B rejected');
 
--- shared-food unit: A update/delete affect 0 rows, row unchanged
-update public.food_unit set grams = 999 where id = '00000000-0000-0000-0000-0000000000e1';
-delete from public.food_unit where id = '00000000-0000-0000-0000-0000000000e1';
+-- shared-food unit: A can't edit, soft-delete or hard-delete it
+update public.food_unit set grams = 999, deleted_at = now() where id = '00000000-0000-0000-0000-0000000000e1';
+select throws_ok($$delete from public.food_unit where id = '00000000-0000-0000-0000-0000000000e1'$$,
+                 '42501', null, 'A cannot hard-delete unit of shared food');
 reset role;
-select results_eq($$select label, grams from public.food_unit where id = '00000000-0000-0000-0000-0000000000e1'$$,
-                  $$values ('bowl', 40::numeric)$$, 'A cannot update/delete unit of shared food');
+select results_eq($$select label, grams, deleted_at is null from public.food_unit where id = '00000000-0000-0000-0000-0000000000e1'$$,
+                  $$values ('bowl', 40::numeric, true)$$, 'A cannot update/soft-delete unit of shared food');
 select tests.act_as(:'a'::uuid);
 
 -- derived_from must be visible
