@@ -142,11 +142,13 @@ Use this when the hosted project is lost. Run commands from the repo root.
 7. Commit the `config/supabase.env` change (only that file), update the `SUPABASE_DB_PASSWORD` GitHub secret,
    then run the backup workflow once to prove it.
 
-### Vault root key caveat
+### Vault secrets are not in the backup
 
-Supabase Vault secrets are encrypted with a project root key that is **not** in the dump.
-Before deleting or replacing a project, retrieve its root encryption key (see Supabase's
-docs); otherwise Vault secrets (used from Task 6) cannot be decrypted after a restore.
+The CLI dump excludes the `vault` schema, so `vault.secrets` (the users' Anthropic API
+keys) is never backed up. After a restore every user has to re-enter their key.
+
+There is nothing to keep or retrieve for Vault: the encrypted values are not in the dump in
+the first place, so the root key would not help.
 
 ## Proven end to end
 
