@@ -151,7 +151,7 @@ Behaviour:
 
 - [ ] **Step 7: Prove it end to end**
 
-Push the branch, then run `gh workflow run backup.yml --ref feat/foundation` and `gh run watch`.
+A new `workflow_dispatch` workflow can't be dispatched until GitHub has registered it (it is on the default branch, or has run once). So commit the files now (Step 10's command), add a temporary `push: branches: [feat/foundation]` trigger in its own commit, push, and `gh run watch` the run it starts. Remove the trigger in its own commit once Step 8 passes; later runs, including Task 7's, can then use `gh workflow run backup.yml --ref <branch>`.
 Expected: a green run and an artifact `backup-<run_id>` with three `.age` files.
 If it fails on connection: confirm the URI's user is `postgres.<ref>` (not `postgres`), the port is `5432` (session mode, not 6543), and the password has no unescaped URL characters (percent-encode them). Record any fix in `backups.md`.
 
