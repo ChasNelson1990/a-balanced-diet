@@ -16,7 +16,7 @@
 
 - Metric only: grams, ml, kcal, mg. No imperial units anywhere: column names, comments, seed data or docs.
 - Missing nutrient values are `NULL` (unknown), never `0`.
-- Every per-user table has `owner_id uuid not null default auth.uid()` referencing `auth.users(id) on delete cascade`, `updated_at timestamptz not null default now()` maintained by trigger, and `deleted_at timestamptz` (soft delete). Primary keys are `uuid` generated on the client (`default gen_random_uuid()` as a fallback).
+- Every per-user table has `owner_id uuid not null default auth.uid()` referencing `auth.users(id) on delete cascade`, `updated_at timestamptz not null default now()` set by a trigger on insert and update, and `deleted_at timestamptz` (soft delete). Primary keys are `uuid` generated on the client (`default gen_random_uuid()` as a fallback).
 - RLS is enabled on **every** table in `public`. No table is left readable by `anon`.
 - Free tier only: no paid add-ons, no IPv4 add-on.
 - Secrets (database password, `age` private key, Anthropic keys) are never committed and never in a client bundle.
@@ -281,7 +281,7 @@ Scottish baseline seed: `household_food_waste_edible_kg_per_person_year` = 63, u
   - `wholegrain_fraction_bounds`: inserting 1.2 → `throws_ok '23514'`.
 
 - [ ] **Step 2: Run.** `npm run db:test`, expected FAIL.
-- [ ] **Step 3: Write the migration** to satisfy the Interfaces. Add the shared `set_updated_at()` trigger function here (`before update … for each row`), which Task 5 reuses.
+- [ ] **Step 3: Write the migration** to satisfy the Interfaces. Add the shared `set_updated_at()` trigger function here (`before insert or update … for each row`), which Task 5 reuses.
 - [ ] **Step 4: Run.** `npm run db:reset && npm run db:test`, expected PASS.
 - [ ] **Step 5: Commit**: `feat: :lock: add food library with visibility rls`
 

@@ -93,7 +93,7 @@ Offline data pipeline (Python, in the repo)
 
 Technology choices are the builder's unless marked as decided in §3. The suggested defaults are Vite and `vite-plugin-pwa`, Dexie for IndexedDB, `supabase-js`, a small WASM LP solver such as `glpk.js` or `highs-js`, and uv-managed Python for the pipeline.
 
-**Local-first sync.** Every per-user row has a UUID primary key generated on the device, plus `updated_at` and `deleted_at` (soft delete). Changes queue locally and push when online; pulls fetch rows with `updated_at` later than the last sync. Last write wins per row, which is enough for one person on one or two devices. The app calls `navigator.storage.persist()` on first run.
+**Local-first sync.** Every per-user row has a UUID primary key generated on the device, plus `updated_at` and `deleted_at` (soft delete). Changes queue locally and push when online; pulls fetch rows with `updated_at` later than the last sync. **The server sets `updated_at` on every insert and update**, so a row created offline is stamped when it arrives and no other device misses it. Last write wins per row, meaning the last upload, which is enough for one person on one or two devices. The app calls `navigator.storage.persist()` on first run.
 
 `food_unit` and `food_group_share` sync per row in the same way: the server sets `updated_at` on insert and update, and deletes set `deleted_at`. Their keys never change. The pipeline soft-deletes them too.
 
