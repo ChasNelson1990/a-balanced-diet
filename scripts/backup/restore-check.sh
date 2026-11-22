@@ -50,6 +50,25 @@ sed -i -E \
   -e 's/^((shadow_|inspector_)?port[[:space:]]*=[[:space:]]*)543([0-9]{2})/\1553\3/' \
   -e 's/^(inspector_port[[:space:]]*=[[:space:]]*)8083/\19083/' \
   "$cfg"
+# Run the same Auth version as the hosted project. Supabase upgrades hosted Auth ahead of the
+# CLI's bundled version, and a data dump from a newer Auth has columns an older one lacks.
+# If the project can't be reached (e.g. it is gone), set AUTH_VERSION=vX.Y.Z to choose one.
+auth_version="${AUTH_VERSION:-}"
+if [ -z "$auth_version" ]; then
+  auth_version="$(
+    # shellcheck source=../../config/supabase.env
+    source "$repo_root/config/supabase.env"
+    curl -fsS --max-time 20 -H "apikey: $SUPABASE_PUBLISHABLE_KEY" "$SUPABASE_URL/auth/v1/health" |
+      sed -n -E 's/.*"version":"(v[0-9.]+)".*/\1/p'
+  )" || auth_version=""
+fi
+if [[ "$auth_version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "using Auth $auth_version"
+  mkdir -p "$stack/supabase/.temp"
+  printf '%s' "$auth_version" > "$stack/supabase/.temp/gotrue-version"
+else
+  echo "warning: hosted Auth version unknown, using the CLI's own; if the restore fails on an auth column, re-run with AUTH_VERSION=vX.Y.Z" >&2
+fi
 "${sb[@]}" start --workdir "$stack"
 
 # 3. Restore (documented method). Known-harmless lines that fail on a fresh local stack are

@@ -61,6 +61,14 @@ Before restoring, the script comments out two lines that are known to fail on a 
 as the Supabase docs advise: `ALTER ... OWNER TO "supabase_admin"` in `schema.sql` and
 `GRANT "postgres" TO "cli_login_postgres"` in `roles.sql`.
 
+The throwaway stack runs the **same Auth version as the hosted project**, read from its
+`/auth/v1/health` endpoint. Supabase upgrades hosted Auth ahead of the version bundled with the
+CLI, and a dump from a newer Auth has columns that an older one lacks (on 2026-11-22 this
+failed with `column "link_token_hash" of relation "one_time_tokens" does not exist`). If the
+project can't be reached, pass a version yourself: `AUTH_VERSION=vX.Y.Z scripts/backup/restore-check.sh ...`.
+The same kind of failure in the `storage` schema would mean Storage has moved ahead too: update
+the Supabase CLI.
+
 ### Restoring into a new hosted project
 
 Use this when the hosted project is lost. Run commands from the repo root.
