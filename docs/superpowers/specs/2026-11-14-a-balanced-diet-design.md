@@ -42,7 +42,7 @@ The user shops little and often and checks the cupboard before shopping. Today t
 | Backups | A scheduled `pg_dump` (e.g. a GitHub Action). The user has had trouble with GitHub Actions and the session pooler before, so this must be proven early (§12). |
 | Users | Multiple users, **completely separate** (own targets, plan, cupboard, logs, shopping list). A shared kitchen is a later idea. |
 | Diet base | Always starts from **EAT-Lancet 2025**: all 16 targets including sugar (added/free), palm/coconut oil, lard/tallow/butter and sodium. |
-| Food groups | Driven by ethics. Each group is excluded, allowed or favoured; this changes rarely. Currently poultry is excluded, and wild venison, line-caught fish and eggs are the animal foods. |
+| Food groups | Driven by ethics. Each group is allowed or favoured, and those with an EAT minimum of 0 can also be excluded (§9.4); this changes rarely. Currently poultry is excluded, and wild venison, line-caught fish and eggs are the animal foods. |
 | Targets that change | Calorie target, protein floor and fibre floor will change. The colour split (50/30/20 by kcal) is fairly stable. |
 | Colour | Assigned **per food**, mainly by calorie density with protein density taken into account (Noom-like). Colour drives the *daily* colour budget; grams count separately against the *weekly* food-group quotas. |
 | Mixed foods | Every food belongs to one or more EAT groups, split by weight (crisps → starchy roots + oil; beer → grain). No food is outside the groups. |
@@ -114,7 +114,7 @@ Technology choices are the builder's unless marked as decided in §3. The sugges
 - `dish_breakdown`: ingredients for a proxy dish (food → grams per 100 g of dish), owned per user (private).
 
 **Per-user data** (RLS: `owner_id = auth.uid()`):
-- `profile_targets`: kcal target, protein floor, fibre floor, fibre soft ceiling, colour split and tolerance, per-group status (excluded / allowed / favoured), and per-group pins.
+- `profile_targets`: kcal target, protein floor, fibre floor, fibre soft ceiling, colour split and tolerance, per-group status (excluded / allowed / favoured), and per-group pins. The app enforces which groups can be excluded (§9.4); the database accepts any status.
 - `plan`: an optimiser output the user accepted (g/day per group plus expected totals), versioned with the date it took effect.
 - `log_entry`: date (Europe/London day), slot, food or dish, quantity (g or count × unit), `from_cupboard` flag, and the breakdown used (a copy of the edited breakdown, so later edits don't rewrite history).
 - `cupboard_item`: food, quantity on hand (g), added_at.
