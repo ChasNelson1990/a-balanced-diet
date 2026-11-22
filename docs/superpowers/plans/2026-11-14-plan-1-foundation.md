@@ -260,14 +260,14 @@ Scottish baseline seed: `household_food_waste_edible_kg_per_person_year` = 63, u
   - `co2e_kg_per_kg numeric`, `co2e_factor_id uuid references co2e_factor(id)`, `shares_status shares_status not null default 'none'`
   - plus the global sync columns
   - constraints: `check ((visibility = 'private') = (owner_id is not null))`; `unique (source, source_ref) where visibility = 'shared'` (partial unique index)
-- Produces `public.food_group_share(food_id uuid references food(id) on delete cascade, group_code text references eat_group(code), grams_per_100g numeric not null check (grams_per_100g >= 0), primary key (food_id, group_code))`.
-- Produces `public.food_unit(id uuid pk, food_id uuid not null references food(id) on delete cascade, label text not null, grams numeric not null check (grams > 0), unique (food_id, label))`.
+- Produces `public.food_group_share(food_id uuid references food(id) on delete cascade, group_code text references eat_group(code), grams_per_100g numeric not null check (grams_per_100g >= 0), sync columns, primary key (food_id, group_code))`.
+- Produces `public.food_unit(id uuid pk, food_id uuid not null references food(id) on delete cascade, label text not null, grams numeric not null check (grams > 0), sync columns)`, with a unique index on `(food_id, label) where deleted_at is null`.
 - Produces `public.dish_breakdown(id uuid pk, owner_id …, dish_food_id uuid not null references food(id), ingredient_food_id uuid not null references food(id), grams_per_100g_dish numeric not null check (grams_per_100g_dish > 0), sync columns, unique (owner_id, dish_food_id, ingredient_food_id))`.
 - RLS:
   - `food` select: `visibility in ('shared','public') or owner_id = auth.uid()`.
   - `food` insert and update: `with check (visibility = 'private' and owner_id = auth.uid())`; update additionally `using (owner_id = auth.uid())`.
   - `food` delete: no policy (soft delete via `deleted_at`).
-  - `food_group_share` and `food_unit`: select if the parent food is visible; write if the parent food's `owner_id = auth.uid()`.
+  - `food_group_share` and `food_unit`: select if the parent food is visible; insert and update if the parent food's `owner_id = auth.uid()`; no delete (soft delete via `deleted_at`). The server sets `updated_at` on insert and update, and a trigger rejects changes to their keys.
   - `dish_breakdown`: owner only, for all commands.
 
 - [ ] **Step 1: Failing tests `20_food_library.test.sql`**, named:

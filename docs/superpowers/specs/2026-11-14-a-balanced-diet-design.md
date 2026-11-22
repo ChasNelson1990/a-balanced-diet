@@ -95,6 +95,8 @@ Technology choices are the builder's unless marked as decided in §3. The sugges
 
 **Local-first sync.** Every per-user row has a UUID primary key generated on the device, plus `updated_at` and `deleted_at` (soft delete). Changes queue locally and push when online; pulls fetch rows with `updated_at` later than the last sync. Last write wins per row, which is enough for one person on one or two devices. The app calls `navigator.storage.persist()` on first run.
 
+`food_unit` and `food_group_share` sync per row in the same way: the server sets `updated_at` on insert and update, and deletes set `deleted_at`. Their keys never change. The pipeline soft-deletes them too.
+
 **Auth.** Email and password with email confirmation **off**, and public sign-up **disabled**. The owner creates further users in the Supabase dashboard, so no SMTP setup is needed. Sessions persist in the installed PWA's own storage.
 
 ## 6. Data model (logical)
