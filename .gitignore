@@ -4,3 +4,9 @@
 # Reference material: not for the repo
 *.pdf
 planetary-health-diet-plan.xlsx
+
+# Supabase / node
+supabase/.temp/
+supabase/.branches/
+.env*
+node_modules/
