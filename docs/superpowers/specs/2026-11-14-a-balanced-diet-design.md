@@ -107,7 +107,7 @@ Technology choices are the builder's unless marked as decided in §3. The sugges
 
 **Library** (shared across users, or private to one, decided by `visibility`):
 - `food`: name, `source` (user / cofid / off / ai / manual), `source_ref`, `visibility` (private / shared / public), `owner_id` (null when shared), `derived_from` (the food it was edited from), state (raw, cooked, dry, as eaten), nutrients per 100 g (null = **unknown**, never 0), kcal per g, colour (computed) plus an optional colour override, and CO2e per kg plus factor reference.
-- `food_group_share`: for each food, a list of (EAT group, grams of group per 100 g of food). This is where dry equivalents live: 100 g of cooked lentils carries ~40 g of legumes (dry equivalent), and 100 g of crisps carries ~X g of starchy roots plus ~Y g of unsaturated oil.
+- `food_group_share`: for each food, a list of (EAT group, grams of group per 100 g of food). This is where dry equivalents live: 100 g of cooked lentils carries ~33 g of legumes (dry equivalent, §7.2), and 100 g of crisps carries ~X g of starchy roots plus ~Y g of unsaturated oil.
 - `food_family`: links the generic, raw/dry, cooked and branded forms of one food (e.g. "red lentils": dried, boiled, a branded pouch), with a **yield factor** per member relative to the family's reference state. *My call (from the builder check).* It's needed so that eating "lentils, boiled" can draw down "red lentils, dried" in the cupboard. `food.family_id` is nullable.
 - `food.wholegrain_fraction`: 0–1 for foods in the grains group (wholemeal bread ≈ 1, white rice 0, a 50/50 loaf 0.5). Null = unknown.
 - `food_unit`: simple count units per food ("1 medium apple = 182 g", "1 bar = 40 g"). Editable, metric weights only.
