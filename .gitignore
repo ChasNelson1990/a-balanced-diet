@@ -10,3 +10,9 @@ supabase/.temp/
 supabase/.branches/
 .env*
 node_modules/
+
+# Decrypted backups and keys: never commit. A backstop, as they shouldn't be in the repo at all.
+/roles.sql
+/schema.sql
+/data.sql
+*.agekey

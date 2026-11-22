@@ -1,0 +1,42 @@
+name: backup
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Mask password
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          echo "::add-mask::$SUPABASE_DB_PASSWORD"
+          echo "::add-mask::$(python3 -c 'import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1],safe=""))' "$SUPABASE_DB_PASSWORD")"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
+        with:
+          version: 3.1.0
+      - run: sudo apt-get update && sudo apt-get install -y age postgresql-client
+      - name: Dump and encrypt
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: scripts/backup/dump.sh backup-out
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          # Per attempt, matching the heartbeat id: a re-run must not collide with or replace an earlier backup.
+          name: backup-${{ github.run_id }}-${{ github.run_attempt }}
+          path: backup-out/*.age
+          retention-days: 90
+          if-no-files-found: error
