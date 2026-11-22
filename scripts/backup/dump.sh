@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Usage: scripts/backup/dump.sh <out_dir>
 # Config: config/supabase.env (host, port, user, db name, AGE_RECIPIENT; committed, not secret).
-# Env:   SUPABASE_DB_PASSWORD (secret; percent-encoded here when building the URL),
+# Env:   SUPABASE_DB_PASSWORD (secret),
 #        RUN_ID (unique per run; written to public.backup_heartbeat and checked in the dump).
-#        Optional overrides: SUPABASE_DB_URL (skips building the URL, e.g. for a local proof),
-#        AGE_RECIPIENT (replaces the one in the config file).
+#        Optional override: AGE_RECIPIENT (replaces the one in the config file).
+# Every connection is TLS, verified against Supabase's CA (sslmode=verify-full).
 # Writes <out_dir>/{roles,schema,data}.sql.age. Plaintext never leaves a private temp dir.
 set -euo pipefail
 
@@ -20,11 +20,15 @@ set +a
 [ -z "$override_age" ] || AGE_RECIPIENT="$override_age"
 : "${AGE_RECIPIENT:?AGE_RECIPIENT is required}"
 
-if [ -z "${SUPABASE_DB_URL:-}" ]; then
-  : "${SUPABASE_DB_PASSWORD:?SUPABASE_DB_PASSWORD is required (or set SUPABASE_DB_URL)}"
-  encoded_password="$(python3 -c 'import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1],safe=""))' "$SUPABASE_DB_PASSWORD")"
-  SUPABASE_DB_URL="postgresql://${SUPABASE_DB_USER}:${encoded_password}@${SUPABASE_DB_HOST}:${SUPABASE_DB_PORT}/${SUPABASE_DB_NAME}"
-fi
+# Connection settings for psql and pg_dump. No URL, so the password is never on a command line.
+: "${SUPABASE_DB_PASSWORD:?SUPABASE_DB_PASSWORD is required}"
+ca_file="$repo_root/config/supabase-prod-ca-2021.crt"
+export PGHOST="$SUPABASE_DB_HOST" PGPORT="$SUPABASE_DB_PORT" PGUSER="$SUPABASE_DB_USER"
+export PGDATABASE="$SUPABASE_DB_NAME" PGPASSWORD="$SUPABASE_DB_PASSWORD"
+export PGSSLMODE=verify-full PGSSLROOTCERT="$ca_file"
+
+# The image CLI 3.1.0 dumps with. Bump it with the CLI (its major must be >= the server's).
+pg_image="public.ecr.aws/supabase/postgres:17.11.0.018"
 
 if ! [[ "$RUN_ID" =~ ^[A-Za-z0-9._-]+$ ]]; then
   echo "RUN_ID must match [A-Za-z0-9._-]+" >&2
@@ -38,6 +42,24 @@ else
   sb=(npx supabase)
 fi
 
+# `supabase db dump` drops sslmode before it runs pg_dump. So have the CLI print its dump script
+# (a dry run against a dummy URL, which connects to nothing) and run that with verified TLS.
+verified_dump() {
+  local out="$1" script
+  shift
+  script="$("${sb[@]}" db dump --dry-run "$@" --remote='postgresql://unused:unused@127.0.0.1:1/postgres' |
+    sed -n '/^#!\/usr\/bin\/env bash/,$p' |
+    grep -v -E '^export PG(HOST|PORT|USER|PASSWORD|DATABASE)=')"
+  if [[ "$script" != *pg_dump* || "$script" == *"export PG"* ]]; then
+    echo "backup failed: unexpected dry-run output from supabase db dump (CLI changed?)" >&2
+    return 1
+  fi
+  docker run --rm --entrypoint bash \
+    -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD -e PGDATABASE -e PGSSLMODE \
+    -e PGSSLROOTCERT=/supabase-ca.crt -v "$ca_file:/supabase-ca.crt:ro" \
+    "$pg_image" -c "$script" > "$out"
+}
+
 mkdir -p "$out_dir"
 tmp="$(mktemp -d)"
 cleanup() {
@@ -47,13 +69,13 @@ cleanup() {
 trap cleanup EXIT
 
 # 1. Heartbeat: proves the dump is fresh, and counts as activity (keeps the free project awake).
-psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -v run_id="$RUN_ID" \
+psql -v ON_ERROR_STOP=1 -v run_id="$RUN_ID" \
   <<< "insert into public.backup_heartbeat(run_id) values (:'run_id');"
 
-# 2. The three documented dumps. CLI 3.1.0 targets a URL with --remote=<url> (older CLIs: --db-url).
-"${sb[@]}" db dump --remote="$SUPABASE_DB_URL" -f "$tmp/roles.sql" --role-only
-"${sb[@]}" db dump --remote="$SUPABASE_DB_URL" -f "$tmp/schema.sql"
-"${sb[@]}" db dump --remote="$SUPABASE_DB_URL" -f "$tmp/data.sql" --use-copy --data-only \
+# 2. The three documented dumps.
+verified_dump "$tmp/roles.sql" --role-only
+verified_dump "$tmp/schema.sql"
+verified_dump "$tmp/data.sql" --use-copy --data-only \
   -x "storage.buckets_vectors" -x "storage.vector_indexes"
 
 # 3. Sanity checks: nothing empty, and the heartbeat made it into the data dump.

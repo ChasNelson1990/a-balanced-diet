@@ -18,21 +18,30 @@
 
 Non-secret settings live in the committed `config/supabase.env` (project ref, URL, pooler
 host/port/user/database, and the `AGE_RECIPIENT` public key). The only GitHub secret is
-`SUPABASE_DB_PASSWORD`. `dump.sh` sources the config file, percent-encodes the password and
-builds the session-pooler URI itself:
-`postgresql://postgres.<ref>:<password>@aws-N-<region>.pooler.supabase.com:5432/postgres`.
+`SUPABASE_DB_PASSWORD`. `dump.sh` sources the config file and connects through the session
+pooler (`postgres.<ref>` at `aws-N-<region>.pooler.supabase.com:5432`), passing the password in
+the environment, never on a command line.
 The project region is **eu-west-1** (Ireland), pooler host `aws-1-eu-west-1.pooler.supabase.com`.
 The user must be `postgres.<ref>`, the port `5432` (session mode, not 6543). The workflow
 masks the raw and encoded password in the logs.
 
-For local proofs, set `SUPABASE_DB_URL` (and optionally `AGE_RECIPIENT`) to override the
-built URL and the configured key.
+`AGE_RECIPIENT` in the environment overrides the configured key, for test backups.
 
-### CLI flag
+### TLS
 
-Supabase CLI 3.1.0 (the repo's pinned devDependency) has no `--db-url` on `db dump`; it uses
-`--remote=<ref|branch|url>`. The scripts pass `--remote="$SUPABASE_DB_URL"`. Older CLIs
-(and the Supabase docs page) may show `--db-url` instead.
+Every connection `dump.sh` makes uses `sslmode=verify-full` with Supabase's root CA, committed
+as `config/supabase-prod-ca-2021.crt` (the public certificate offered in the dashboard, SHA-256
+`80:70:25:AD:50:D4:ED:21:9D:2C:9C:7D:29:9C:00:4F:82:4E:B0:0C:F7:F6:5A:FE:F6:07:D0:7B:72:E6:CA:FA`,
+**expires 26 April 2031**).
+
+Supabase CLI 3.1.0 drops `sslmode` before it runs `pg_dump`, so `dump.sh` doesn't let the CLI
+connect. It takes the dump script from `supabase db dump --dry-run` and runs it in the same
+Postgres image with verified TLS. When upgrading the CLI, bump `pg_image` in `dump.sh` and run
+the backup and restore check once.
+
+Also keep **Enforce SSL** switched on in the dashboard (Database settings, SSL configuration).
+It makes the server refuse unencrypted connections from every other client, but it doesn't
+replace verification: it can't prove the server's identity to the client.
 
 ## Where the backups are
 
@@ -87,14 +96,18 @@ Use this when the hosted project is lost. Run commands from the repo root.
    set -a; source config/supabase.env; set +a
    enc="$(python3 -c 'import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1],safe=""))' "$SUPABASE_DB_PASSWORD")"
    URL="postgresql://${SUPABASE_DB_USER}:${enc}@${SUPABASE_DB_HOST}:${SUPABASE_DB_PORT}/${SUPABASE_DB_NAME}"
+   URL_TLS="${URL}?sslmode=verify-full&sslrootcert=$PWD/config/supabase-prod-ca-2021.crt"
    ```
+
+   Switch on **Enforce SSL** for the new project. Use `URL_TLS` with `psql`; the CLI ignores
+   those parameters, so it gets the plain `URL`.
 
 3. Decrypt the backup (`age -d -i ~/.config/a-balanced-diet/backup.agekey -o <name>.sql
    <name>.sql.age` for `roles`, `schema` and `data`), apply the two `sed` fixes from the
    section above, and run the documented restore against `$URL`:
 
    ```bash
-   psql "$URL" --single-transaction -v ON_ERROR_STOP=1 \
+   psql "$URL_TLS" --single-transaction -v ON_ERROR_STOP=1 \
      -f roles.sql -f schema.sql -c 'SET session_replication_role = replica' -f data.sql
    ```
 
@@ -155,4 +168,6 @@ No workaround is built in; this is a decision for the owner.
 
 - User must be `postgres.<ref>`, not `postgres`.
 - Port `5432` (session mode), not `6543`.
-- The password is percent-encoded by `dump.sh`; paste it raw into the secret.
+- Paste the password raw into the secret; `dump.sh` needs no percent-encoding.
+- `certificate verify failed`: check the CA hasn't expired or been replaced by Supabase. Don't
+  lower `sslmode` to get past it.
