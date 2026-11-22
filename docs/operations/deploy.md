@@ -128,8 +128,8 @@ check, which must not return 16 rows (it returns HTTP 401 with code 42501):
 ```bash
 gh workflow run backup.yml --ref <branch>
 gh run watch <run_id> --exit-status
-gh run download <run_id> -D <empty_dir>      # creates <empty_dir>/backup-<run_id>/
-scripts/backup/restore-check.sh <empty_dir>/backup-<run_id> ~/.config/a-balanced-diet/backup.agekey <run_id>-<attempt>
+gh run download <run_id> -n backup-<run_id>-<attempt> -D <empty_dir>
+scripts/backup/restore-check.sh <empty_dir> ~/.config/a-balanced-diet/backup.agekey <run_id>-<attempt>
 ```
 
 Expected last line: `restore check OK: heartbeat <run_id>-<attempt> found, eat_group = 16`.
