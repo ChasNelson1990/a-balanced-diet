@@ -126,6 +126,8 @@ Use this when the hosted project is lost. Run commands from the repo root.
    ' restore "$backup_dir"
    ```
 
+   Then recreate the Automatic RLS trigger (see "Automatic RLS is not in the backup" below).
+
 4. The `supabase_migrations` schema is excluded from the dump, so the new project does not
    know which migrations were applied. Mark every migration as applied, otherwise the next
    `db push` tries to re-run them. CLI 3.1.0 needs `--yes` for a remote mutation:
@@ -141,6 +143,21 @@ Use this when the hosted project is lost. Run commands from the repo root.
 6. Re-apply the dashboard auth settings (sign-ups off, email confirmation off).
 7. Commit the `config/supabase.env` change (only that file), update the `SUPABASE_DB_PASSWORD` GitHub secret,
    then run the backup workflow once to prove it.
+
+### Automatic RLS is not in the backup
+
+The dashboard's Automatic RLS option is a function, `public.rls_auto_enable()`, which is in the
+dump, and an event trigger, `ensure_rls`, which is not. Without the trigger, new tables no
+longer get RLS switched on automatically. After a restore, recreate it:
+
+```bash
+psql "$URL_TLS" -v ON_ERROR_STOP=1 <<'SQL'
+drop event trigger if exists ensure_rls;
+create event trigger ensure_rls on ddl_command_end
+  when tag in ('CREATE TABLE', 'CREATE TABLE AS', 'SELECT INTO')
+  execute function public.rls_auto_enable();
+SQL
+```
 
 ### Vault secrets are not in the backup
 
