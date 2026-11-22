@@ -65,7 +65,8 @@ scripts/backup/restore-check.sh /tmp/abd-restore ~/.config/a-balanced-diet/backu
 `restore-check`, every port shifted +1000 so it can run beside the dev stack), restores into
 it with `psql --single-transaction -v ON_ERROR_STOP=1 -f roles.sql -f schema.sql -c 'SET
 session_replication_role = replica' -f data.sql`, checks the heartbeat row, then stops and
-removes the stack. It prints `restore check OK: heartbeat <run_id>-1 found` on success.
+removes the stack. It prints `restore check OK: heartbeat <run_id>-<attempt> found` on success.
+Only one check runs at a time: a second waits for the first (up to 30 minutes).
 
 Before restoring, the script comments out two lines that are known to fail on a fresh stack,
 as the Supabase docs advise: `ALTER ... OWNER TO "supabase_admin"` in `schema.sql` and

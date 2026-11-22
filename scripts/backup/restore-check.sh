@@ -26,6 +26,14 @@ else
   sb=(npx --prefix "$repo_root" supabase)
 fi
 
+# Every run shares the project id and ports, so only one may run at a time. Take the lock before
+# the cleanup trap exists; it is released when the script exits, after cleanup.
+exec 9>"/tmp/abd-restore-check.lock"
+if ! flock -n 9; then
+  echo "another restore check is running, waiting for it to finish" >&2
+  flock -w 1800 9 || { echo "restore check FAILED: gave up waiting for the lock" >&2; exit 1; }
+fi
+
 plain="$(mktemp -d)"
 stack="$(mktemp -d)"
 db_url="postgresql://postgres:postgres@127.0.0.1:55322/postgres"
