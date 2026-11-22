@@ -36,8 +36,9 @@ Supabase CLI 3.1.0 (the repo's pinned devDependency) has no `--db-url` on `db du
 
 ## Where the backups are
 
-Each run uploads a GitHub Actions artifact `backup-<run_id>` containing `roles.sql.age`,
-`schema.sql.age` and `data.sql.age`. Artifacts are kept for **90 days**.
+Each run attempt uploads a GitHub Actions artifact `backup-<run_id>-<attempt>` containing
+`roles.sql.age`, `schema.sql.age` and `data.sql.age`. Artifacts are kept for **90 days**.
+(Runs up to 2026-11-22 11:16 UTC used `backup-<run_id>`, without the attempt.)
 
 The private key (`~/.config/a-balanced-diet/backup.agekey`) is not on GitHub. Keep a copy
 somewhere safe: without it the backups cannot be decrypted.
@@ -45,11 +46,11 @@ somewhere safe: without it the backups cannot be decrypted.
 ## Restoring
 
 ```bash
-gh run download <run_id> -n backup-<run_id> -D /tmp/abd-restore
-scripts/backup/restore-check.sh /tmp/abd-restore ~/.config/a-balanced-diet/backup.agekey <run_id>-1
+gh run download <run_id> -n backup-<run_id>-<attempt> -D /tmp/abd-restore
+scripts/backup/restore-check.sh /tmp/abd-restore ~/.config/a-balanced-diet/backup.agekey <run_id>-<attempt>
 ```
 
-(`-1` is the run attempt; use the attempt number of the run you downloaded.)
+(`<attempt>` is 1 unless the run was re-run. The id after `backup-` is also the heartbeat id.)
 
 `restore-check.sh` decrypts the files, starts a throwaway local Supabase stack (project id
 `restore-check`, every port shifted +1000 so it can run beside the dev stack), restores into
