@@ -87,7 +87,7 @@ Use this when the hosted project is lost. Run commands from the repo root.
 1. Create a new Supabase project (same region if you can) and note its ref, database
    password and pooler host.
 2. Point the repo at the **new** project before connecting. Update `config/supabase.env`
-   (project ref, URL, pooler host, user) and set `SUPABASE_DB_PASSWORD` in your direnv
+   (project ref, URL, pooler host, user, publishable key) and set `SUPABASE_DB_PASSWORD` in your direnv
    environment to the new project's password. Then build `URL` from those values. Building
    it from the old config would target the lost project. Do not echo `URL`:
 
