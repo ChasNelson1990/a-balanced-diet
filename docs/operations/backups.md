@@ -103,13 +103,27 @@ Use this when the hosted project is lost. Run commands from the repo root.
    Switch on **Enforce SSL** for the new project. Use `URL_TLS` with `psql`; the CLI ignores
    those parameters, so it gets the plain `URL`.
 
-3. Decrypt the backup (`age -d -i ~/.config/a-balanced-diet/backup.agekey -o <name>.sql
-   <name>.sql.age` for `roles`, `schema` and `data`), apply the two `sed` fixes from the
-   section above, and run the documented restore against `$URL`:
+3. Restore the backup you downloaded (change `backup_dir` to its folder). This decrypts into a
+   private temp directory and shreds it afterwards. **Never decrypt into the repo:** `data.sql`
+   holds every user's email, password hash and logs, and this repo is public.
 
    ```bash
-   psql "$URL_TLS" --single-transaction -v ON_ERROR_STOP=1 \
-     -f roles.sql -f schema.sql -c 'SET session_replication_role = replica' -f data.sql
+   backup_dir=/tmp/abd-restore
+   URL_TLS="$URL_TLS" bash -c '
+     set -euo pipefail
+     umask 077
+     work="$(mktemp -d)"
+     cleanup() { find "$work" -type f -exec shred -u {} +; rm -rf "$work"; }
+     trap cleanup EXIT
+     for name in roles schema data; do
+       age -d -i ~/.config/a-balanced-diet/backup.agekey -o "$work/$name.sql" "$1/$name.sql.age"
+     done
+     sed -i -E "s/^(ALTER .* OWNER TO \"supabase_admin\";)/-- \1/" "$work/schema.sql"
+     sed -i -E "s/^(GRANT \"postgres\" TO \"cli_login_postgres\".*)/-- \1/" "$work/roles.sql"
+     psql "$URL_TLS" --single-transaction -v ON_ERROR_STOP=1 \
+       -f "$work/roles.sql" -f "$work/schema.sql" \
+       -c "SET session_replication_role = replica" -f "$work/data.sql"
+   ' restore "$backup_dir"
    ```
 
 4. The `supabase_migrations` schema is excluded from the dump, so the new project does not
@@ -125,7 +139,7 @@ Use this when the hosted project is lost. Run commands from the repo root.
 
 5. Do **not** re-apply the seeds: the reference data is already in `data.sql`.
 6. Re-apply the dashboard auth settings (sign-ups off, email confirmation off).
-7. Commit the `config/supabase.env` change, update the `SUPABASE_DB_PASSWORD` GitHub secret,
+7. Commit the `config/supabase.env` change (only that file), update the `SUPABASE_DB_PASSWORD` GitHub secret,
    then run the backup workflow once to prove it.
 
 ### Vault root key caveat
