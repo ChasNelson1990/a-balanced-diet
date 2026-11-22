@@ -4,8 +4,9 @@ A personal diet-tracking progressive web app, backed by Supabase (Postgres, auth
 
 ## Local development
 
-Prerequisite: Docker must be running.
+Prerequisites: Node.js 24 with npm, and Docker running.
 
+- `npm ci` installs the pinned dependencies, including the Supabase CLI. Run this first.
 - `npm run db:start` starts the local Supabase stack.
 - `npm run db:reset` rebuilds the local database from the migrations.
 - `npm run db:test` runs the pgTAP tests in `supabase/tests/database`.
