@@ -1,0 +1,25 @@
+name: db-tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  pgtap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Supabase's ports sit inside the ephemeral range, so an outgoing connection can take one
+      # before the stack binds it. Reserve them, and start only the database, which is all pgTAP needs.
+      - run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=54320-54329
+      - run: npx supabase db start
+      - run: npx supabase test db
